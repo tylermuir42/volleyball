@@ -1,104 +1,362 @@
-import express from "express";
+/**
+ * Express Server Setup
+ * Main application entry point with middleware and routes
+ */
+
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { Pool } from "pg";
-import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 
+// Configuration
 dotenv.config();
+import { config, validateConfig, logConfig } from "./config/env";
+import { initializeDb, closeDb } from "./config/database";
+
+// Middleware
+import { logger } from "./middleware/logging";
+import { errorHandler, asyncHandler } from "./middleware/errorHandler";
+
+// Routes
+import { healthRouter } from "./routes/health";
+
+// Services (will be used in routes)
+import { tournamentService } from "./services/TournamentService";
+import { locationService } from "./services/LocationService";
+import { teamService } from "./services/TeamService";
+import { poolService } from "./services/PoolService";
+import { matchService } from "./services/MatchService";
+import { standingsService } from "./services/StandingsService";
+
+// ============================================================================
+// Initialize Express App
+// ============================================================================
 
 const app = express();
-app.use(cors());
-app.use(express.json());
 
-const port = process.env.PORT || 4000;
+// ============================================================================
+// Middleware
+// ============================================================================
 
-const dbUrl = process.env.DATABASE_URL;
+// CORS
+app.use(
+  cors({
+    origin: config.CORS_ORIGIN,
+    credentials: true,
+  }),
+);
 
-if (!dbUrl) {
-  // In local/dev we fail fast; in ECS this should be set via env var/secret.
-  console.warn("DATABASE_URL is not set. Database operations will fail until configured.");
-}
+// Body parsing
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
-const dbPool = dbUrl
-  ? new Pool({
-      connectionString: dbUrl,
-    })
-  : undefined;
+// Request logging
+app.use(logger);
 
-const awsRegion = process.env.AWS_REGION || "us-west-2";
-const eventBusName = process.env.EVENT_BUS_NAME || "volleyball-events";
+// ============================================================================
+// Routes - Health
+// ============================================================================
 
-const eventBridgeClient = new EventBridgeClient({ region: awsRegion });
+app.use("/health", healthRouter);
 
-app.get("/health", async (_req, res) => {
-  try {
-    if (dbPool) {
-      await dbPool.query("SELECT 1");
-    }
-    res.json({ status: "ok" });
-  } catch (err) {
-    console.error("Health check failed", err);
-    res.status(500).json({ status: "error" });
-  }
-});
+// ============================================================================
+// Routes - Tournaments (CRUD)
+// ============================================================================
 
-// Minimal example endpoint to create a tournament row.
-// Schema will be evolved later with proper migrations.
-app.post("/tournaments", async (req, res) => {
-  if (!dbPool) {
-    res.status(500).json({ error: "Database not configured" });
-    return;
-  }
+// POST /tournaments - Create tournament
+app.post(
+  "/tournaments",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { name, date } = req.body;
+    const tournament = await tournamentService.create({ name, date });
+    res.status(201).json(tournament);
+  }),
+);
 
-  const { name, date } = req.body;
+// GET /tournaments - List all tournaments
+app.get(
+  "/tournaments",
+  asyncHandler(async (_req: Request, res: Response) => {
+    const tournaments = await tournamentService.list();
+    res.json(tournaments);
+  }),
+);
 
-  if (!name) {
-    res.status(400).json({ error: "name is required" });
-    return;
-  }
+// GET /tournaments/:id - Get tournament by ID
+app.get(
+  "/tournaments/:id",
+  asyncHandler(async (req: Request, res: Response) => {
+    const tournament = await tournamentService.getById(parseInt(req.params.id));
+    res.json(tournament);
+  }),
+);
 
-  try {
-    const result = await dbPool.query(
-      `
-      INSERT INTO tournaments (name, date, status)
-      VALUES ($1, $2, 'CREATED')
-      RETURNING id, name, date, status
-      `,
-      [name, date || null]
+// GET /tournaments/:id/overview - Get tournament overview with stats
+app.get(
+  "/tournaments/:id/overview",
+  asyncHandler(async (req: Request, res: Response) => {
+    const overview = await tournamentService.getOverview(
+      parseInt(req.params.id),
+    );
+    res.json(overview);
+  }),
+);
+
+// ============================================================================
+// Routes - Locations & Courts
+// ============================================================================
+
+// POST /tournaments/:tournamentId/locations - Add location
+app.post(
+  "/tournaments/:tournamentId/locations",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { name, max_courts } = req.body;
+    const location = await locationService.create(
+      parseInt(req.params.tournamentId),
+      name,
+      max_courts || 4,
+    );
+    res.status(201).json(location);
+  }),
+);
+
+// GET /tournaments/:tournamentId/locations - List locations
+app.get(
+  "/tournaments/:tournamentId/locations",
+  asyncHandler(async (req: Request, res: Response) => {
+    const locations = await locationService.listByTournament(
+      parseInt(req.params.tournamentId),
+    );
+    res.json(locations);
+  }),
+);
+
+// POST /locations/:locationId/courts - Add court
+app.post(
+  "/locations/:locationId/courts",
+  asyncHandler(async (req: Request, res: Response) => {
+    const court = await locationService.addCourt(
+      parseInt(req.params.locationId),
+      req.body,
+    );
+    res.status(201).json(court);
+  }),
+);
+
+// GET /locations/:locationId/courts - List courts in location
+app.get(
+  "/locations/:locationId/courts",
+  asyncHandler(async (req: Request, res: Response) => {
+    const courts = await locationService.getCourtsByLocation(
+      parseInt(req.params.locationId),
+    );
+    res.json(courts);
+  }),
+);
+
+// ============================================================================
+// Routes - Teams
+// ============================================================================
+
+// POST /tournaments/:tournamentId/teams - Create team
+app.post(
+  "/tournaments/:tournamentId/teams",
+  asyncHandler(async (req: Request, res: Response) => {
+    const team = await teamService.create(
+      parseInt(req.params.tournamentId),
+      req.body,
+    );
+    res.status(201).json(team);
+  }),
+);
+
+// POST /tournaments/:tournamentId/teams/bulk - Bulk import teams
+app.post(
+  "/tournaments/:tournamentId/teams/bulk",
+  asyncHandler(async (req: Request, res: Response) => {
+    const teams = await teamService.createBulk(
+      parseInt(req.params.tournamentId),
+      req.body.teams || [],
+    );
+    res.status(201).json(teams);
+  }),
+);
+
+// GET /tournaments/:tournamentId/teams - List teams
+app.get(
+  "/tournaments/:tournamentId/teams",
+  asyncHandler(async (req: Request, res: Response) => {
+    const teams = await teamService.listByTournament(
+      parseInt(req.params.tournamentId),
+    );
+    res.json(teams);
+  }),
+);
+
+// ============================================================================
+// Routes - Pools & Matches
+// ============================================================================
+
+// POST /tournaments/:tournamentId/pools/auto-assign - Auto-assign teams to pools
+app.post(
+  "/tournaments/:tournamentId/pools/auto-assign",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { num_pools, teams_per_pool, location_id, court_id } = req.body;
+
+    const result = await poolService.autoAssignTeamsAndCreateMatches(
+      parseInt(req.params.tournamentId),
+      num_pools,
+      teams_per_pool,
+      location_id,
+      court_id,
     );
 
-    const tournament = result.rows[0];
+    res.status(201).json(result);
+  }),
+);
 
-    // Fire a simple domain event via EventBridge so the cloud side can react.
-    try {
-      await eventBridgeClient.send(
-        new PutEventsCommand({
-          Entries: [
-            {
-              EventBusName: eventBusName,
-              Source: "volleyball.backend",
-              DetailType: "TournamentCreated",
-              Detail: JSON.stringify({
-                tournamentId: tournament.id,
-                name: tournament.name,
-              }),
-            },
-          ],
-        })
-      );
-    } catch (eventErr) {
-      console.error("Failed to put TournamentCreated event", eventErr);
-      // Do not fail the request on event error in this initial version.
-    }
+// GET /tournaments/:tournamentId/pools - List pools with standings
+app.get(
+  "/tournaments/:tournamentId/pools",
+  asyncHandler(async (req: Request, res: Response) => {
+    const pools = await poolService.listByTournament(
+      parseInt(req.params.tournamentId),
+    );
 
-    res.status(201).json(tournament);
-  } catch (err) {
-    console.error("Failed to create tournament", err);
-    res.status(500).json({ error: "Failed to create tournament" });
+    // Enrich each pool with standings and matches
+    const enrichedPools = await Promise.all(
+      pools.map(async (pool) => {
+        const standings = await standingsService.getPoolStandings(pool.id);
+        const matches = await matchService.listByPool(pool.id);
+        return {
+          ...pool,
+          standings,
+          matches,
+        };
+      }),
+    );
+
+    res.json(enrichedPools);
+  }),
+);
+
+// GET /pools/:poolId - Get single pool
+app.get(
+  "/pools/:poolId",
+  asyncHandler(async (req: Request, res: Response) => {
+    const pool = await poolService.getById(parseInt(req.params.poolId));
+    const standings = await standingsService.getPoolStandings(pool.id);
+    const matches = await matchService.listByPool(pool.id);
+    const poolTeams = await poolService.getPoolTeams(pool.id);
+
+    res.json({
+      ...pool,
+      standings,
+      matches,
+      teams: poolTeams,
+    });
+  }),
+);
+
+// ============================================================================
+// Routes - Matches & Scoring
+// ============================================================================
+
+// GET /matches/:matchId - Get match details
+app.get(
+  "/matches/:matchId",
+  asyncHandler(async (req: Request, res: Response) => {
+    const match = await matchService.getById(parseInt(req.params.matchId));
+    res.json(match);
+  }),
+);
+
+// POST /matches/:matchId/score - Submit match score
+app.post(
+  "/matches/:matchId/score",
+  asyncHandler(async (req: Request, res: Response) => {
+    const match = await matchService.submitScore(
+      parseInt(req.params.matchId),
+      req.body,
+    );
+
+    // TODO: Phase 3 - Publish events to EventBridge here
+    // For now, just return the updated match
+
+    res.json(match);
+  }),
+);
+
+// GET /tournaments/:tournamentId/standings - Get all standings
+app.get(
+  "/tournaments/:tournamentId/standings",
+  asyncHandler(async (req: Request, res: Response) => {
+    const standings = await standingsService.getTournamentStandings(
+      parseInt(req.params.tournamentId),
+    );
+    res.json(standings);
+  }),
+);
+
+// ============================================================================
+// Error Handling (must be last)
+// ============================================================================
+
+app.use(errorHandler);
+
+// ============================================================================
+// Startup & Shutdown
+// ============================================================================
+
+let server: ReturnType<typeof app.listen>;
+
+export async function startServer(): Promise<void> {
+  try {
+    // Validate configuration
+    validateConfig();
+    logConfig();
+
+    // Initialize database
+    console.log("🔌 Initializing database connection pool...");
+    initializeDb();
+    console.log("✓ Database connected");
+
+    // Start HTTP server
+    server = app.listen(config.PORT, () => {
+      console.log(`\n🚀 Server running at http://localhost:${config.PORT}`);
+      console.log(`   Health check: http://localhost:${config.PORT}/health`);
+      console.log("");
+    });
+  } catch (error) {
+    console.error("⚠️  Failed to start server:", error);
+    process.exit(1);
   }
-});
+}
 
-app.listen(port, () => {
-  console.log(`Backend listening on port ${port}`);
-});
+// Graceful shutdown
+async function shutdown(): Promise<void> {
+  console.log("\n🛑 Shutting down server...");
 
+  if (server) {
+    await new Promise<void>((resolve) => {
+      server.close(() => {
+        console.log("✓ HTTP server closed");
+        resolve();
+      });
+    });
+  }
+
+  await closeDb();
+  console.log("✓ Shutdown complete");
+  process.exit(0);
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
+// Export for testing
+export { app };
+
+// Start if this is the main module
+if (require.main === module) {
+  startServer();
+}

@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "db:migrate": "node db/migrate.js",
+    "db:migrate:schema-only": "node db/migrate.js --schema-only",
+    "db:seed": "psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f db/migrations/002_seed_data.sql"
   },
   "dependencies": {
     "@aws-sdk/client-eventbridge": "^3.684.0",
@@ -16,9 +19,10 @@
     "pg": "^8.13.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^22.7.4",
-    "@types/cors": "^2.8.17",
+    "@types/pg": "^8.11.6",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.6.3"
   }
