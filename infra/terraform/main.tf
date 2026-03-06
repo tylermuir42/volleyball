@@ -52,6 +52,11 @@ variable "container_image" {
   type        = string
 }
 
+variable "ecs_task_execution_role_arn" {
+  description = "Existing IAM role ARN for ECS task execution (Learner Lab usually provides one, e.g. LabRole). Terraform will not create IAM roles in restricted labs."
+  type        = string
+}
+
 locals {
   name_prefix = "${var.project_name}"
 }
@@ -185,28 +190,6 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
-resource "aws_iam_role" "ecs_task_execution" {
-  name = "${local.name_prefix}-ecs-task-execution"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        },
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
-  role       = aws_iam_role.ecs_task_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
 resource "aws_security_group" "ecs_service" {
   name        = "${local.name_prefix}-ecs-sg"
   description = "Allow HTTP in to ECS and all egress"
@@ -281,7 +264,7 @@ resource "aws_ecs_task_definition" "backend" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
   memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  execution_role_arn       = var.ecs_task_execution_role_arn
 
   container_definitions = jsonencode([
     {
