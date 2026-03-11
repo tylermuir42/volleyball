@@ -1,0 +1,10 @@
+{
+    "name": "ws-broadcast",
+    "version": "0.0.1",
+    "main": "index.js",
+    "private": true,
+    "dependencies": {
+      "@aws-sdk/client-dynamodb": "^3.684.0",
+      "@aws-sdk/client-apigatewaymanagementapi": "^3.684.0"
+    }
+  }
