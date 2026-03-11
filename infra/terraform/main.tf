@@ -61,6 +61,12 @@ locals {
   name_prefix = "${var.project_name}"
 }
 
+# EventBridge bus for domain events (MatchCompleted, StandingsUpdated, PoolCompleted, BracketGenerated)
+# Backend ECS task uses EVENT_BUS_NAME = "${local.name_prefix}-events"
+resource "aws_cloudwatch_event_bus" "main" {
+  name = "${local.name_prefix}-events"
+}
+
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
@@ -364,5 +370,15 @@ output "alb_dns_name" {
 output "db_endpoint" {
   description = "RDS Postgres endpoint"
   value       = aws_db_instance.postgres.address
+}
+
+output "event_bus_name" {
+  description = "EventBridge bus name for domain events"
+  value       = aws_cloudwatch_event_bus.main.name
+}
+
+output "event_bus_arn" {
+  description = "EventBridge bus ARN for domain events"
+  value       = aws_cloudwatch_event_bus.main.arn
 }
 

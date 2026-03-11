@@ -9,7 +9,7 @@ Last updated: 2026-03-04
 
 ### In Progress
 
-- **EventBridge Terraform** (cloud engineer)
+- **EventBridge Terraform** (cloud engineer) – see [CLOUDSHELL_EVENTBRIDGE.md](./CLOUDSHELL_EVENTBRIDGE.md) for CloudShell deployment steps
 - **Frontend hosting via Amplify** (software engineer)
 
 ### Still Needed (High Priority)
