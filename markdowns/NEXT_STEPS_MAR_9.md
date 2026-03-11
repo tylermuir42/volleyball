@@ -6,28 +6,21 @@ Last updated: 2026-03-04
 
 - **Core infra applied successfully** (ECS + RDS + ALB + VPC/subnets) via `infra/terraform/main.tf`
 - **ECR repository created**
+- **EventBridge Terraform** (cloud engineer) – see [CLOUDSHELL_EVENTBRIDGE.md](./CLOUDSHELL_EVENTBRIDGE.md)
 
 ### In Progress
 
-- **EventBridge Terraform** (cloud engineer) – see [CLOUDSHELL_EVENTBRIDGE.md](./CLOUDSHELL_EVENTBRIDGE.md) for CloudShell deployment steps
-
-COMPLETED: The EventBridge section now links to CLOUDSHELL_EVENTBRIDGE.md
+- **Backend container build + deploy to ECS** – see [CLOUDSHELL_BACKEND_DEPLOY.md](./CLOUDSHELL_BACKEND_DEPLOY.md) for step-by-step (build locally, Terraform apply in CloudShell)
 - **Frontend hosting via Amplify** (software engineer)
 
 ### Still Needed (High Priority)
 
 #### 1) Backend container build + deploy to ECS
 
-- **Build and push backend image to ECR**
-  - Build from `backend/Dockerfile`
-  - Tag with a version (e.g. `:v0.1.0` or `:latest`)
-  - Push to ECR
-- **Update ECS service to use the pushed image**
-  - Ensure Terraform `container_image` points to the correct tag
-  - `terraform apply` to update the ECS task definition/service
-- **Verify backend is reachable**
-  - Confirm ALB target is healthy (`/health` returns 200)
-  - Confirm backend logs show startup (CloudWatch)
+- **See [CLOUDSHELL_BACKEND_DEPLOY.md](./CLOUDSHELL_BACKEND_DEPLOY.md)** for full steps
+- Build and push backend image to ECR (local machine with Docker)
+- Update ECS via Terraform apply in **CloudShell**
+- Verify ALB `/health` and CloudWatch logs
 
 #### 2) Database schema + migrations (minimum viable)
 

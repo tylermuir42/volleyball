@@ -28,9 +28,9 @@ export const config = {
     SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
   },
 
-  // EventBridge
+  // EventBridge (ECS Terraform passes EVENT_BUS_NAME)
   EVENTBRIDGE: {
-    BUS_NAME: process.env.EVENTBRIDGE_BUS_NAME || "volleyball-events",
+    BUS_NAME: process.env.EVENT_BUS_NAME || process.env.EVENTBRIDGE_BUS_NAME || "volleyball-events",
     ENABLED: process.env.EVENTBRIDGE_ENABLED !== "false", // Enabled by default
   },
 
