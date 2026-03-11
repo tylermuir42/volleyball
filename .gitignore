@@ -8,8 +8,8 @@ yarn-error.log*
 # Backend build output
 /backend/dist/
 
-# Frontend (Next.js) build output
-/frontend/.next/
+# Frontend build output
+/frontend/dist/
 /frontend/out/
 
 # Environment files (do not commit secrets)
