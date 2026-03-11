@@ -1,21 +1,21 @@
 # PostgreSQL Migrations Guide
 
-This directory contains all database migrations for the Southern LA Volleyball Tournament System.
+This guide documents the database migrations for the Southern LA Volleyball Tournament System.
 
 ## Files
 
-- `001_init_schema.sql` – Initial schema with all tables, constraints, indexes, and views
-- `002_seed_data.sql` – Sample data for local development and testing
-- `schema.ts` (optional) – TypeORM migration if using TypeORM
+- `001_init_schema.sql` – Initial schema with all tables, constraints, indexes, and views.
+- `002_seed_data.sql` – Sample data for local development and testing.
+- `schema.ts` (optional) – TypeORM migration if using TypeORM.
 
 ## Quick Start
 
-### Option 1: Direct SQL Execution (Fastest for Local Dev)
+### Option 1: Direct SQL Execution (fastest for local dev)
 
 **Prerequisites:**
 
-- PostgreSQL installed locally or RDS with network access
-- `psql` command-line tool
+- PostgreSQL installed locally or RDS with network access.
+- `psql` command-line tool.
 
 **Steps:**
 
@@ -47,7 +47,7 @@ If using this approach, create a simple Node.js runner:
 npm install pg
 ```
 
-Then use [node-migrate](https://db-migrate.readthedocs.io/) or a custom script.
+Then use a custom script (or a library such as `node-migrate`).
 
 ### Option 3: TypeORM Migrations
 
@@ -65,12 +65,12 @@ typeorm migration:create ./migrations/InitSchema
 
 ### Step 1: Create RDS Instance via AWS Console
 
-1. Go to **RDS > Create database**
-2. Select **PostgreSQL** engine
-3. Choose suitable instance type (e.g., `db.t3.micro` for dev/test)
-4. Set instance identifier: `tournament-db`
-5. Set master username/password (save these!)
-6. Create DB in Learner Lab VPC with appropriate security groups
+1. Go to **RDS > Create database**.
+2. Select **PostgreSQL** engine.
+3. Choose suitable instance type (e.g., `db.t3.micro` for dev/test).
+4. Set instance identifier: `tournament-db`.
+5. Set master username/password (save these).
+6. Create DB in Learner Lab VPC with appropriate security groups.
 
 ### Step 2: Get RDS Endpoint
 
@@ -97,7 +97,7 @@ psql -f migrations/001_init_schema.sql
 psql -f migrations/002_seed_data.sql
 ```
 
-Or use a script (see below).
+Or use a Node.js script (see below).
 
 ## Migration Runner Script (Node.js)
 
@@ -189,8 +189,8 @@ node db/migrate.js
 
 ### Views
 
-| View             | Purpose                                       |
-| ---------------- | --------------------------------------------- |
+| View             | Purpose                                        |
+| ---------------- | ---------------------------------------------- |
 | `pool_standings` | Real-time standings calculation for each pool |
 
 ## Data Relationships
@@ -275,12 +275,12 @@ ORDER BY m.start_time ASC;
 ### Connection Refused
 
 - Check PostgreSQL is running: `psql -U postgres -c "SELECT version();"`
-- For RDS: verify security group allows inbound traffic on port 5432
+- For RDS: verify security group allows inbound traffic on port 5432.
 
 ### Migration Already Exists
 
-- The migrations are idempotent for schema creation (uses `CREATE TABLE IF NOT EXISTS`)
-- To reset: `DROP TABLE IF EXISTS duties CASCADE;` then re-run migrations
+- The migrations are idempotent for schema creation (use `CREATE TABLE IF NOT EXISTS`).
+- To reset: `DROP TABLE IF EXISTS duties CASCADE;` then re-run migrations.
 
 ### Check Existing Schema
 
@@ -300,11 +300,11 @@ ORDER BY m.start_time ASC;
 
 ## Next Steps
 
-1. **Verify schema locally** – Run migrations on local PostgreSQL
-2. **Test with sample data** – Run seed script and query `pool_standings`
-3. **Configure backend** – Update `.env` with DB credentials
-4. **Deploy to RDS** – Use AWS RDS endpoint when infra is ready
-5. **Implement services** – Build Node.js models and API endpoints
+1. **Verify schema locally** – run migrations on local PostgreSQL.
+2. **Test with sample data** – run seed script and query `pool_standings`.
+3. **Configure backend** – update `.env` with DB credentials.
+4. **Deploy to RDS** – use AWS RDS endpoint when infra is ready.
+5. **Implement services** – build Node.js models and API endpoints.
 
 ## Environment Variables
 
@@ -328,3 +328,4 @@ DB_USER=admin
 DB_PASSWORD=yourpassword
 DB_NAME=tournament_db
 ```
+

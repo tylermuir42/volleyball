@@ -4,7 +4,7 @@ Get the PostgreSQL schema and sample data loaded in minutes.
 
 ## Prerequisites
 
-- **Option A (Local)**: PostgreSQL installed (`brew install postgresql` on Mac, or [download](https://www.postgresql.org/download/))
+- **Option A (Local)**: PostgreSQL installed (`brew install postgresql` on Mac, or from the PostgreSQL website)
 - **Option B (Remote)**: AWS RDS instance created and network accessible
 
 ## Step 1: Set Up Environment Variables
@@ -56,10 +56,10 @@ npm run db:migrate
 
 This will:
 
-1. Connect to PostgreSQL
-2. Create the database if it doesn't exist (if using postgres user)
-3. Execute all schema migrations
-4. Load sample data
+1. Connect to PostgreSQL.
+2. Create the database if it doesn't exist (if using postgres user).
+3. Execute all schema migrations.
+4. Load sample data.
 
 **Output:**
 
@@ -162,9 +162,9 @@ The backend should connect to PostgreSQL successfully and print connection info.
 **Solution**:
 
 - Verify PostgreSQL is running: `psql -U postgres -c "SELECT version();"`
-- Check host/port in `.env`
-- On Mac: `brew services start postgresql`
-- On Windows: PostgreSQL service in Services app
+- Check host/port in `.env`.
+- On Mac: `brew services start postgresql`.
+- On Windows: use the PostgreSQL service in the Services app.
 
 ### Authentication Failed
 
@@ -172,8 +172,9 @@ The backend should connect to PostgreSQL successfully and print connection info.
 
 **Solution**:
 
-- Verify password is correct in `.env`
+- Verify password is correct in `.env`.
 - Reset PostgreSQL password (Mac/Linux):
+
   ```bash
   sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'new_password';"
   ```
@@ -184,7 +185,7 @@ The backend should connect to PostgreSQL successfully and print connection info.
 
 **Solution**:
 
-- The migration script handles this (it checks before creating)
+- The migration script handles this (it checks before creating).
 - Or delete and recreate: `psql -U postgres -c "DROP DATABASE IF EXISTS tournament_db;"`
 
 ### No Permission to Create Database
@@ -193,8 +194,8 @@ The backend should connect to PostgreSQL successfully and print connection info.
 
 **Solution**:
 
-- Use a superuser account (postgres) in `.env`
-- Or use `--schema-only` flag: `npm run db:migrate:schema-only`
+- Use a superuser account (postgres) in `.env`.
+- Or use `--schema-only` flag: `npm run db:migrate:schema-only`.
 
 ### AWS RDS Connection Issues
 
@@ -202,19 +203,19 @@ The backend should connect to PostgreSQL successfully and print connection info.
 
 **Solution**:
 
-1. Verify RDS endpoint in `.env` (copy from AWS console)
+1. Verify RDS endpoint in `.env` (copy from AWS console).
 2. Check security group allows inbound on port 5432:
-   - RDS > Databases > Select instance > Security groups > Check inbound rules
-3. Ensure VPC and network configuration allows your machine to reach RDS
-4. Test with: `telnet tournament-db.xxxxx.us-west-2.rds.amazonaws.com 5432`
+   - RDS > Databases > select instance > Security groups > check inbound rules.
+3. Ensure VPC and network configuration allows your machine to reach RDS.
+4. Test with: `telnet tournament-db.xxxxx.us-west-2.rds.amazonaws.com 5432`.
 
 ## Next Steps
 
-1. ✅ Verify tables and sample data exist
-2. 📝 Start implementing backend services (models, repositories)
-3. 🔄 Build REST API endpoints
-4. 🧪 Write unit tests for database logic
-5. 🚀 Connect to EventBridge (Phase 3)
+1. ✅ Verify tables and sample data exist.
+2. 📝 Start implementing backend services (models, repositories).
+3. 🔄 Build REST API endpoints.
+4. 🧪 Write unit tests for database logic.
+5. 🚀 Connect to EventBridge (Phase 3).
 
 ## Useful Commands
 
@@ -271,13 +272,14 @@ backend/
 
 When your cloud engineers have set up RDS:
 
-1. Get the endpoint from AWS console
-2. Update `.env` with RDS credentials
-3. Ensure security group allows your machine's IP
-4. Run: `npm run db:migrate`
-5. Commit schema files to git (migrations are version-controlled)
-6. Use CI/CD pipeline to auto-run migrations on each deployment
+1. Get the endpoint from AWS console.
+2. Update `.env` with RDS credentials.
+3. Ensure security group allows your machine's IP.
+4. Run: `npm run db:migrate`.
+5. Commit schema files to git (migrations are version-controlled).
+6. Use CI/CD pipeline to auto-run migrations on each deployment.
 
 ---
 
-**Stuck?** Check [db/README.md](README.md) for detailed documentation, or review the migration files directly.
+If you need deeper detail, see the database migration documentation in the other markdowns.
+

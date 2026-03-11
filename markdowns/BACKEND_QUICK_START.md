@@ -87,7 +87,7 @@ curl http://localhost:5000/health
 
 ## Done! 🎉
 
-Your backend is running. See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for endpoint examples.
+Your backend is running. See `TESTING_GUIDE.md` for endpoint examples.
 
 ---
 
@@ -169,10 +169,10 @@ npm run dev
 
 ## Next Steps
 
-1. **Test basic endpoints** → See [TESTING_GUIDE.md](./TESTING_GUIDE.md)
-2. **Set up frontend** → Frontend team creates Next.js app
-3. **Connect frontend to backend** → Use API client with base URL `http://localhost:5000`
-4. **Phase 3** → Cloud engineers set up EventBridge, add to `.env`
+1. **Test basic endpoints** → see the testing guide.
+2. **Set up frontend** → frontend team creates Next.js app.
+3. **Connect frontend to backend** → use API client with base URL `http://localhost:5000`.
+4. **Phase 3** → cloud engineers set up EventBridge, add to `.env`.
 
 ---
 
@@ -194,9 +194,9 @@ Schema (10 tables, views, indexes)
 
 All services are in `src/services/` and follow the same pattern. Add new endpoints by:
 
-1. Creating a service method
-2. Adding a route handler in `server.ts`
-3. Testing with curl or Postman
+1. Creating a service method.
+2. Adding a route handler in `server.ts`.
+3. Testing with curl or Postman.
 
 ---
 
@@ -204,13 +204,13 @@ All services are in `src/services/` and follow the same pattern. Add new endpoin
 
 When you run `npm run db:migrate`, here's what happens:
 
-1. **Creates connection pool** to PostgreSQL
-2. **Reads migration files** from `db/migrations/`
-3. **Executes 001_init_schema.sql** → All 10 tables created
-4. **Executes 002_seed_data.sql** → Sample tournament added (1 tournament, 12 teams, 3 pools, 18 matches)
-5. **Returns sample data** for testing
+1. **Creates connection pool** to PostgreSQL.
+2. **Reads migration files** from `db/migrations/`.
+3. **Executes 001_init_schema.sql** → all 10 tables created.
+4. **Executes 002_seed_data.sql** → sample tournament added (1 tournament, 12 teams, 3 pools, 18 matches).
+5. **Returns sample data** for testing.
 
-To see the schema in detail, check [SCHEMA_DIAGRAM.md](./SCHEMA_DIAGRAM.md).
+To see the schema in detail, check `SCHEMA_DIAGRAM.md`.
 
 ---
 
@@ -237,10 +237,11 @@ backend/
 
 ## Ready to Code?
 
-- **Backend work** → Open `src/`
-- **Type definitions** → Edit `src/types/index.ts`
-- **Add new service** → Create `src/services/FooService.ts`
-- **Add new endpoint** → Add to `server.ts`
-- **Database schema** → Edit `db/migrations/*.sql`
+- **Backend work** → open `src/`.
+- **Type definitions** → edit `src/types/index.ts`.
+- **Add new service** → create `src/services/FooService.ts`.
+- **Add new endpoint** → add to `server.ts`.
+- **Database schema** → edit `db/migrations/*.sql`.
 
 Good luck! 🏐
+

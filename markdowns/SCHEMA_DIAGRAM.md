@@ -310,4 +310,5 @@ LIMIT 5;
 
 ---
 
-For detailed documentation, see [db/README.md](db/README.md)
+For detailed documentation, see the other database markdowns in this `markdowns/` folder.
+

@@ -101,15 +101,15 @@ src/
 
 ## Key Features
 
-✅ **Structured Services Layer** – Business logic separated from routes  
-✅ **Type Safety** – Complete TypeScript interfaces for all entities  
-✅ **Error Handling** – Centralized error middleware with HTTP error classes  
-✅ **Database Management** – Connection pooling with health checks  
-✅ **Configuration** – Environment variables with validation  
-✅ **Logging** – Request logging and structured event logging  
-✅ **Async Handlers** – Automatic error catching for async routes  
-✅ **Volleyball Rules** – Score validation (25 points, win by 2)  
-✅ **Transaction Support** – Pool service uses explicit transactions
+✅ **Structured Services Layer** – business logic separated from routes  
+✅ **Type Safety** – complete TypeScript interfaces for all entities  
+✅ **Error Handling** – centralized error middleware with HTTP error classes  
+✅ **Database Management** – connection pooling with health checks  
+✅ **Configuration** – environment variables with validation  
+✅ **Logging** – request logging and structured event logging  
+✅ **Async Handlers** – automatic error catching for async routes  
+✅ **Volleyball Rules** – score validation (25 points, win by 2)  
+✅ **Transaction Support** – pool service uses explicit transactions
 
 ## How to Run
 
@@ -266,14 +266,14 @@ EVENTBRIDGE_BUS_NAME=volleyball-events
 
 ### For Frontend Team
 
-APIs are ready! Integrate next.js frontend with:
+APIs are ready! Integrate Next.js frontend with:
 
-- POST /tournaments
-- POST /tournaments/:id/teams
-- POST /tournaments/:id/pools/auto-assign
-- POST /matches/:id/score
-- GET /tournaments/:id/pools
-- GET /tournaments/:id/standings
+- `POST /tournaments`
+- `POST /tournaments/:id/teams`
+- `POST /tournaments/:id/pools/auto-assign`
+- `POST /matches/:id/score`
+- `GET /tournaments/:id/pools`
+- `GET /tournaments/:id/standings`
 
 ## Testing Checklist
 
@@ -291,24 +291,25 @@ APIs are ready! Integrate next.js frontend with:
 ## Known Todos
 
 1. **EventBridge Integration** (Phase 3)
-   - Create EventPublisher service
-   - Publish events on score submission, pool completion
-   - Wire to match score endpoint
+   - Create EventPublisher service.
+   - Publish events on score submission, pool completion.
+   - Wire to match score endpoint.
 
 2. **Bracket Service** (Phase 4)
-   - Implement seeding algorithm
-   - Bracket generation from pools
-   - Bracket match creation
+   - Implement seeding algorithm.
+   - Bracket generation from pools.
+   - Bracket match creation.
 
 3. **Duty Service** (Phase 4)
-   - Duty assignment
-   - Ref and line judge management
+   - Duty assignment.
+   - Ref and line judge management.
 
 4. **Testing**
-   - Unit tests for services
-   - Integration tests for endpoints
-   - E2E tests for flows
+   - Unit tests for services.
+   - Integration tests for endpoints.
+   - E2E tests for flows.
 
 ---
 
 **Status**: Backend scaffolding complete. Ready for Phase 2 (REST API testing and refinement).
+
