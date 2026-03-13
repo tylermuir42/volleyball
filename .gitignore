@@ -29,3 +29,5 @@ yarn-error.log*
 
 .terraform/
 *.tfstate*
+
+infra/terraform/.terraform.lock.hcl
