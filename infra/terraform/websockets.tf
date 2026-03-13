@@ -27,18 +27,6 @@
 #   lambda_ws_message_key      = "volleyball/ws-message.zip"
 #   lambda_ws_broadcast_key    = "volleyball/ws-broadcast.zip"
 
-variable "project_name" {
-  type        = string
-  description = "Project name/prefix (reuse from main.tf)"
-  default     = "volleyball"
-}
-
-variable "aws_region" {
-  type        = string
-  description = "Region (reuse from main.tf)"
-  default     = "us-east-1"
-}
-
 variable "event_bus_name" {
   type        = string
   description = "Existing EventBridge bus name (e.g. volleyball-events)"
