@@ -6,11 +6,19 @@ type UseTournamentUpdatesOptions = {
   tournamentId: number;
   refresh: () => Promise<void> | void;
   pollMs?: number;
+  onEvent?: (event: TournamentRealtimeEvent) => void;
 };
 
 type RealtimeState = {
   mode: RealtimeMode;
   socketConnected: boolean;
+};
+
+export type TournamentRealtimeEvent = {
+  type: string;
+  tournamentId?: number | string;
+  detail?: Record<string, unknown>;
+  raw: unknown;
 };
 
 const updateEventNames = new Set([
@@ -24,6 +32,7 @@ export function useTournamentUpdates({
   tournamentId,
   refresh,
   pollMs = 2000,
+  onEvent,
 }: UseTournamentUpdatesOptions): RealtimeState {
   const [mode, setMode] = useState<RealtimeMode>("polling");
   const [socketConnected, setSocketConnected] = useState(false);
@@ -88,16 +97,38 @@ export function useTournamentUpdates({
             type?: string;
             eventType?: string;
             detailType?: string;
-            tournamentId?: number;
+            tournamentId?: number | string;
+            detail?: {
+              type?: string;
+              tournamentId?: number | string;
+              [key: string]: unknown;
+            };
+            [key: string]: unknown;
           };
 
           const messageType =
-            message.type || message.eventType || message.detailType || "";
+            message.type ||
+            message.eventType ||
+            message.detailType ||
+            message.detail?.type ||
+            "";
 
-          if (
-            updateEventNames.has(messageType) ||
-            message.tournamentId === tournamentId
-          ) {
+          const eventTournamentId =
+            message.tournamentId ?? message.detail?.tournamentId;
+          const isSameTournament =
+            eventTournamentId !== undefined &&
+            String(eventTournamentId) === String(tournamentId);
+
+          if (onEvent && messageType) {
+            onEvent({
+              type: messageType,
+              tournamentId: eventTournamentId,
+              detail: message.detail,
+              raw: message,
+            });
+          }
+
+          if (updateEventNames.has(messageType) || isSameTournament) {
             void Promise.resolve(refresh());
           }
         } catch {
@@ -135,7 +166,7 @@ export function useTournamentUpdates({
         clearPolling();
       };
     }
-  }, [pollMs, refresh, tournamentId]);
+  }, [onEvent, pollMs, refresh, tournamentId]);
 
   return {
     mode,

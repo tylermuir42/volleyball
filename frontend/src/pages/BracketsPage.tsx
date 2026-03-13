@@ -134,6 +134,7 @@ export default function BracketsPage() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [liveBrackets, setLiveBrackets] = useState<BracketDetail[]>([]);
   const [dataSource, setDataSource] = useState<"live" | "fallback">("fallback");
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [bracketEndpointStatus, setBracketEndpointStatus] = useState<
     "checking" | "available" | "missing" | "error"
   >("checking");
@@ -153,6 +154,10 @@ export default function BracketsPage() {
 
         setTournament(tournamentData);
         setTeams(teamsData);
+
+        if (teamsData.length > 0) {
+          setSelectedTeamId((prev) => prev || String(teamsData[0].id));
+        }
 
         try {
           setBracketEndpointStatus("checking");
@@ -239,6 +244,68 @@ export default function BracketsPage() {
       rounds: buildLiveRounds(detail),
     }));
   }, [liveBrackets]);
+
+  const selectedTeam = useMemo(
+    () => teams.find((team) => String(team.id) === selectedTeamId) || null,
+    [selectedTeamId, teams],
+  );
+
+  const renderBracketTree = (
+    rounds: BracketRound[],
+    keyPrefix: string,
+  ): JSX.Element => {
+    return (
+      <div className="bracket-tree">
+        {rounds.map((round) => (
+          <div
+            className="bracket-round-column"
+            key={`${keyPrefix}-${round.name}`}
+          >
+            <p className="bracket-round-title">{round.name}</p>
+            <div className="stack-md">
+              {round.matches.map((match) => (
+                <div
+                  className={`bracket-match-card ${
+                    selectedTeam &&
+                    (match.team1Id === selectedTeam.id ||
+                      match.team2Id === selectedTeam.id)
+                      ? "bracket-match-card-selected"
+                      : ""
+                  }`}
+                  key={`${keyPrefix}-${match.id}`}
+                >
+                  <p className="muted">{match.id}</p>
+                  <p
+                    className={`bracket-team-row ${
+                      match.winnerId && match.team1Id === match.winnerId
+                        ? "bracket-team-winner"
+                        : match.winnerId && match.team1Id
+                          ? "bracket-team-loser"
+                          : ""
+                    }`}
+                  >
+                    {match.team1Id ? teamNameById[match.team1Id] : "TBD"}
+                  </p>
+                  <p
+                    className={`bracket-team-row ${
+                      match.winnerId && match.team2Id === match.winnerId
+                        ? "bracket-team-winner"
+                        : match.winnerId && match.team2Id
+                          ? "bracket-team-loser"
+                          : ""
+                    }`}
+                  >
+                    {match.team2Id ? teamNameById[match.team2Id] : "TBD"}
+                  </p>
+                  <p className="muted">Status: {match.status}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <main className="page">
@@ -341,6 +408,44 @@ export default function BracketsPage() {
         </ul>
       </section>
 
+      <section className="panel-card">
+        <h2>Team Path Highlight</h2>
+        <div className="form-grid">
+          <label htmlFor="bracket-team-select">Select team</label>
+          <select
+            id="bracket-team-select"
+            value={selectedTeamId}
+            onChange={(event) => setSelectedTeamId(event.target.value)}
+          >
+            {teams.length === 0 && <option value="">No teams available</option>}
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+          </select>
+          <p className="muted">
+            {selectedTeam
+              ? `Highlighting path for ${selectedTeam.name}`
+              : "Select a team to highlight its bracket path."}
+          </p>
+          <div className="bracket-legend">
+            <span className="bracket-legend-item">
+              <span className="bracket-legend-swatch bracket-legend-swatch-selected" />
+              Selected team path
+            </span>
+            <span className="bracket-legend-item">
+              <span className="bracket-legend-swatch bracket-legend-swatch-winner" />
+              Match winner
+            </span>
+            <span className="bracket-legend-item">
+              <span className="bracket-legend-swatch bracket-legend-swatch-default" />
+              Other teams
+            </span>
+          </div>
+        </div>
+      </section>
+
       {teams.length < 4 ? (
         <section className="panel-card">
           <p>Add at least 4 teams to preview the bracket scaffold.</p>
@@ -351,52 +456,15 @@ export default function BracketsPage() {
             ? liveBracketCards.map((card) => (
                 <article className="panel-card" key={card.key}>
                   <h3>{card.title}</h3>
-                  <div className="stack-lg">
-                    {card.rounds.map((round) => (
-                      <div key={`${card.key}-${round.name}`}>
-                        <p className="muted">{round.name}</p>
-                        <div className="stack-md">
-                          {round.matches.map((match) => (
-                            <div className="bracket-match-card" key={match.id}>
-                              <p className="muted">{match.id}</p>
-                              <p>
-                                {match.team1Id
-                                  ? teamNameById[match.team1Id]
-                                  : "TBD"}
-                              </p>
-                              <p>
-                                {match.team2Id
-                                  ? teamNameById[match.team2Id]
-                                  : "TBD"}
-                              </p>
-                              <p className="muted">Status: {match.status}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {renderBracketTree(card.rounds, card.key)}
                 </article>
               ))
-            : fallbackRounds.map((round) => (
-                <article className="panel-card" key={round.name}>
-                  <h3>{round.name}</h3>
-                  <div className="stack-md">
-                    {round.matches.map((match) => (
-                      <div className="bracket-match-card" key={match.id}>
-                        <p className="muted">{match.id}</p>
-                        <p>
-                          {match.team1Id ? teamNameById[match.team1Id] : "TBD"}
-                        </p>
-                        <p>
-                          {match.team2Id ? teamNameById[match.team2Id] : "TBD"}
-                        </p>
-                        <p className="muted">Status: {match.status}</p>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              ))}
+            : [
+                <article className="panel-card" key="fallback-bracket-preview">
+                  <h3>Bracket Preview</h3>
+                  {renderBracketTree(fallbackRounds, "fallback")}
+                </article>,
+              ]}
         </section>
       )}
     </main>

@@ -122,3 +122,15 @@ export interface BracketDetail {
   slots?: BracketSlot[];
   matches?: Match[];
 }
+
+export interface Duty {
+  id: number;
+  match_id: number;
+  team_id: number;
+  role: "REF" | "LINE_JUDGE";
+  status: "SCHEDULED" | "COMPLETED" | "MISSED";
+  start_time?: string | null;
+  court_label?: string;
+  location_name?: string;
+  opponent_team_name?: string;
+}

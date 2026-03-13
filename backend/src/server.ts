@@ -26,6 +26,7 @@ import { teamService } from "./services/TeamService";
 import { poolService } from "./services/PoolService";
 import { matchService } from "./services/MatchService";
 import { standingsService } from "./services/StandingsService";
+import { eventPublisher } from "./services/EventPublisher";
 
 // ============================================================================
 // Initialize Express App
@@ -279,8 +280,35 @@ app.post(
       req.body,
     );
 
-    // TODO: Phase 3 - Publish events to EventBridge here
-    // For now, just return the updated match
+    try {
+      await eventPublisher.publishMatchCompleted(match);
+
+      if (match.pool_id) {
+        const standings = await standingsService.getPoolStandings(
+          match.pool_id,
+        );
+        await eventPublisher.publishStandingsUpdated(
+          match.tournament_id,
+          match.pool_id,
+          standings,
+        );
+
+        const poolComplete = await poolService.allMatchesComplete(
+          match.pool_id,
+        );
+        if (poolComplete) {
+          await eventPublisher.publishPoolCompleted(
+            match.tournament_id,
+            match.pool_id,
+          );
+        }
+      }
+    } catch (eventError) {
+      console.error(
+        "⚠️ Failed to publish one or more domain events",
+        eventError,
+      );
+    }
 
     res.json(match);
   }),
