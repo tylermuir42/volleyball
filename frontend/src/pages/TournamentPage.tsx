@@ -1,7 +1,10 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api";
-import { useTournamentUpdates } from "../lib/useTournamentUpdates";
+import {
+  TournamentRealtimeEvent,
+  useTournamentUpdates,
+} from "../lib/useTournamentUpdates";
 import {
   Court,
   EnrichedPool,
@@ -59,6 +62,7 @@ export default function TournamentPage() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [highlightedMatchIds, setHighlightedMatchIds] = useState<number[]>([]);
 
   const [locationForm, setLocationForm] = useState({
     name: "",
@@ -148,9 +152,33 @@ export default function TournamentPage() {
     void refreshAll(true);
   }, [refreshAll, tournamentId]);
 
+  const handleRealtimeEvent = useCallback((event: TournamentRealtimeEvent) => {
+    if (event.type !== "MatchCompleted") {
+      return;
+    }
+
+    const rawMatchId =
+      (event.detail?.matchId as number | string | undefined) ??
+      ((event.raw as { matchId?: number | string }).matchId || undefined);
+
+    const matchId = Number(rawMatchId);
+    if (!Number.isFinite(matchId)) {
+      return;
+    }
+
+    setHighlightedMatchIds((prev) =>
+      prev.includes(matchId) ? prev : [...prev, matchId],
+    );
+
+    window.setTimeout(() => {
+      setHighlightedMatchIds((prev) => prev.filter((id) => id !== matchId));
+    }, 7000);
+  }, []);
+
   const realtime = useTournamentUpdates({
     tournamentId,
     refresh: () => refreshAll(false),
+    onEvent: handleRealtimeEvent,
   });
 
   async function fetchCourts(locationId: number): Promise<Court[]> {
@@ -699,7 +727,14 @@ export default function TournamentPage() {
                     const draft =
                       matchScoreDrafts[match.id] || emptyScoreDraft();
                     return (
-                      <div className="match-card" key={match.id}>
+                      <div
+                        className={`match-card ${
+                          highlightedMatchIds.includes(match.id)
+                            ? "match-card-highlight"
+                            : ""
+                        }`}
+                        key={match.id}
+                      >
                         <p>
                           <strong>
                             {teamNameById[match.team1_id] ||

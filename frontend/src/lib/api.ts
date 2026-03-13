@@ -2,6 +2,7 @@ import {
   Bracket,
   BracketDetail,
   Court,
+  Duty,
   EnrichedPool,
   Location,
   ScoreInput,
@@ -128,6 +129,8 @@ export const api = {
     request<BracketDetail>(
       `/tournaments/${tournamentId}/brackets/${bracketId}`,
     ),
+  getTeamDuties: (tournamentId: number, teamId: number) =>
+    request<Duty[]>(`/tournaments/${tournamentId}/teams/${teamId}/duties`),
 
   isEndpointAvailable: async (path: string): Promise<boolean> => {
     try {
