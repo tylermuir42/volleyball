@@ -5,6 +5,10 @@ body {
   color: #f4f4f5;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 .page {
   max-width: 960px;
   margin: 0 auto;
@@ -54,5 +58,265 @@ body {
 .tournament-card p {
   margin: 0.15rem 0;
   color: #e5e7eb;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.page-header h1 {
+  margin: 0.25rem 0;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+.header-actions,
+.button-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.button {
+  border: 0;
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.85rem;
+  background: #22c55e;
+  color: #0f172a;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:hover {
+  filter: brightness(1.03);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.button-secondary {
+  background: #0f172a;
+  color: #f4f4f5;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.panel-card {
+  padding: 1.1rem 1.2rem;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.9rem;
+}
+
+.panel-card h2,
+.panel-card h3 {
+  margin-top: 0;
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.metric-card {
+  padding: 1rem;
+  border-radius: 0.8rem;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.metric-card p {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.metric-card h2 {
+  margin: 0.35rem 0 0;
+}
+
+.stack-lg {
+  display: grid;
+  gap: 1rem;
+}
+
+.stack-md {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+input,
+select,
+textarea {
+  border-radius: 0.55rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #020617;
+  color: #f4f4f5;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+}
+
+.tab-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 1rem 0 1.25rem;
+}
+
+.tab-button {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #020617;
+  color: #f4f4f5;
+  border-radius: 0.7rem;
+  padding: 0.45rem 0.8rem;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.tab-button-active {
+  background: #22c55e;
+  color: #0f172a;
+  border-color: transparent;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+th {
+  color: #cbd5e1;
+}
+
+.match-card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  background: rgba(2, 6, 23, 0.75);
+}
+
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+  margin: 0.6rem 0;
+}
+
+.clean-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.match-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.diagnostic-value {
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.muted {
+  color: #94a3b8;
+}
+
+.status-row {
+  margin-top: 0.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.status-badge-online {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.5);
+  color: #86efac;
+}
+
+.status-badge-connecting {
+  background: rgba(250, 204, 21, 0.16);
+  border-color: rgba(250, 204, 21, 0.35);
+  color: #fde68a;
+}
+
+.status-badge-polling {
+  background: rgba(148, 163, 184, 0.18);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #cbd5e1;
+}
+
+.bracket-grid {
+  margin-top: 1rem;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.bracket-match-card {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 0.75rem;
+  padding: 0.7rem;
+  background: rgba(2, 6, 23, 0.75);
+}
+
+.bracket-match-card p {
+  margin: 0.2rem 0;
+}
+
+.error-text {
+  color: #f87171;
+}
+
+.success-text {
+  color: #4ade80;
+}
+
+.text-link {
+  color: #4ade80;
 }
 
