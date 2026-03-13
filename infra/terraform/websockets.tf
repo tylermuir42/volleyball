@@ -188,7 +188,7 @@ resource "aws_lambda_function" "ws_broadcast" {
     variables = {
       CONNECTIONS_TABLE = aws_dynamodb_table.ws_connections.name
       # Used inside Lambda to construct ApiGatewayManagementApi endpoint
-      WS_API_ENDPOINT = "https://${aws_apigatewayv2_api.ws.api_id}.execute-api.${var.aws_region}.amazonaws.com/${aws_apigatewayv2_stage.ws.name}"
+      WS_API_ENDPOINT = "https://${aws_apigatewayv2_api.ws.id}.execute-api.${var.aws_region}.amazonaws.com/${aws_apigatewayv2_stage.ws.name}"
     }
   }
 }
@@ -299,7 +299,7 @@ resource "aws_lambda_permission" "ws_broadcast_events" {
 
 output "ws_api_url" {
   description = "WebSocket API URL (set this as NEXT_PUBLIC_WS_URL)"
-  value       = "wss://${aws_apigatewayv2_api.ws.api_id}.execute-api.${var.aws_region}.amazonaws.com/${aws_apigatewayv2_stage.ws.name}"
+  value       = "wss://${aws_apigatewayv2_api.ws.id}.execute-api.${var.aws_region}.amazonaws.com/${aws_apigatewayv2_stage.ws.name}"
 }
 
 output "ws_connections_table" {
