@@ -1,0 +1,21 @@
+# CodeBuild buildspec - builds backend Docker image and pushes to ECR
+# Used when building entirely from CloudShell (no local Docker)
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - echo Cloning repository...
+      - git clone https://github.com/tylermuir42/volleyball.git .
+      - echo Build started on $(date)
+  build:
+    commands:
+      - docker build -t volleyball-backend -f backend/Dockerfile .
+      - docker tag volleyball-backend $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${ECR_REPO_NAME:-volleyball}:latest
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${ECR_REPO_NAME:-volleyball}:latest
+
+artifacts:
+  files: []
+  name: backend-image

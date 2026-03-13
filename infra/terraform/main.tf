@@ -48,7 +48,7 @@ variable "db_instance_class" {
 }
 
 variable "container_image" {
-  description = "Backend container image for ECS (ECR URI)"
+  description = "Backend container image for ECS (ECR URI). After CodeBuild build, use output ecr_image_uri."
   type        = string
 }
 
@@ -57,8 +57,148 @@ variable "ecs_task_execution_role_arn" {
   type        = string
 }
 
+variable "ecr_repository_name" {
+  description = "ECR repository name for backend image"
+  type        = string
+  default     = "volleyball"
+}
+
+variable "create_ecr_repository" {
+  description = "Create ECR repo in Terraform. Set false if repo already exists (e.g. created in console)."
+  type        = bool
+  default     = true
+}
+
+variable "github_repo_url" {
+  description = "GitHub repo URL for CodeBuild to clone"
+  type        = string
+  default     = "https://github.com/tylermuir42/volleyball.git"
+}
+
 locals {
   name_prefix = "${var.project_name}"
+  account_id  = data.aws_caller_identity.current.account_id
+  ecr_uri     = "${local.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/${var.ecr_repository_name}:latest"
+}
+
+data "aws_caller_identity" "current" {}
+
+# ECR repository for backend image
+resource "aws_ecr_repository" "backend" {
+  count                = var.create_ecr_repository ? 1 : 0
+  name                 = var.ecr_repository_name
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+data "aws_ecr_repository" "backend" {
+  count        = var.create_ecr_repository ? 0 : 1
+  name         = var.ecr_repository_name
+}
+
+# CodeBuild project - builds backend Docker image and pushes to ECR (CloudShell-only workflow)
+resource "aws_iam_role" "codebuild" {
+  name = "${local.name_prefix}-codebuild"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = { Service = "codebuild.amazonaws.com" }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "codebuild" {
+  name   = "${local.name_prefix}-codebuild"
+  role   = aws_iam_role.codebuild.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = "ecr:GetAuthorizationToken"
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload"
+        ]
+        Resource = var.create_ecr_repository ? aws_ecr_repository.backend[0].arn : data.aws_ecr_repository.backend[0].arn
+      }
+    ]
+  })
+}
+
+resource "aws_codebuild_project" "backend_build" {
+  name          = "${local.name_prefix}-backend-build"
+  description   = "Build backend Docker image and push to ECR"
+  build_timeout = 15
+  service_role = aws_iam_role.codebuild.arn
+
+  artifacts {
+    type = "NO_ARTIFACTS"
+  }
+
+  environment {
+    compute_type                = "BUILD_GENERIC1_SMALL"
+    image                       = "aws/codebuild/standard:7.0"
+    type                        = "LINUX_CONTAINER"
+    image_pull_credentials_type = "CODEBUILD"
+    privileged_mode             = true
+
+    environment_variable {
+      name  = "ECR_REPO_NAME"
+      value = var.ecr_repository_name
+    }
+  }
+
+  source {
+    type      = "NO_SOURCE"
+    buildspec = <<-EOT
+      version: 0.2
+      phases:
+        pre_build:
+          commands:
+            - echo Logging in to Amazon ECR...
+            - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+            - echo Cloning repository...
+            - git clone ${var.github_repo_url} .
+            - echo Build started on $(date)
+        build:
+          commands:
+            - docker build -t volleyball-backend -f backend/Dockerfile .
+            - docker tag volleyball-backend $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${var.ecr_repository_name}:latest
+            - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/${var.ecr_repository_name}:latest
+      artifacts:
+        files: []
+    EOT
+  }
+
+  logs_config {
+    cloudwatch_logs {
+      group_name  = "/codebuild/${local.name_prefix}-backend-build"
+      stream_name = "build"
+    }
+  }
 }
 
 # EventBridge bus for domain events (MatchCompleted, StandingsUpdated, PoolCompleted, BracketGenerated)
@@ -388,5 +528,15 @@ output "event_bus_name" {
 output "event_bus_arn" {
   description = "EventBridge bus ARN for domain events"
   value       = aws_cloudwatch_event_bus.main.arn
+}
+
+output "ecr_image_uri" {
+  description = "Full ECR image URI for backend (use as container_image after CodeBuild push)"
+  value       = local.ecr_uri
+}
+
+output "codebuild_project_name" {
+  description = "CodeBuild project name for starting backend build"
+  value       = aws_codebuild_project.backend_build.name
 }
 

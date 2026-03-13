@@ -1,82 +1,39 @@
-# Backend Container Build + Deploy to ECS
+# Backend Container Build + Deploy – CloudShell Only
 
-Deploy the backend Docker image to ECS. **Build/push** happens on a machine with Docker; **Terraform apply** runs in **AWS CloudShell**.
+Everything runs in **AWS CloudShell**. No local Docker or AWS CLI required.
 
 ---
 
 ## Overview
 
-| Step | Where | What |
-|------|--------|------|
-| 1. Build image | Local machine (Docker) | Build from `backend/Dockerfile` |
-| 2. Push to ECR | Local machine | Tag and push to your ECR repo |
-| 3. Update ECS | **CloudShell** | `terraform apply` with new `container_image` |
-| 4. Verify | Browser / curl | Hit ALB `/health`, check CloudWatch logs |
+| Step | What |
+|------|------|
+| 1 | Clone repo, apply Terraform (CodeBuild + ECR) |
+| 2 | Start CodeBuild to build image and push to ECR |
+| 3 | Apply Terraform again to update ECS with new image |
+| 4 | Verify ALB `/health` and CloudWatch logs |
 
 ---
 
 ## Prerequisites
 
-- **Local**: Docker installed, AWS CLI configured, repo cloned
-- **CloudShell**: Same AWS account/region as your infra, repo cloned
-- **ECR**: Repository created (e.g. `volleyball-backend`)
-- **RDS**: Database exists (Terraform already created it)
-- **Migrations**: Run against RDS before app can serve full API (see [DATABASE_SETUP.md](./DATABASE_SETUP.md))
+- AWS CloudShell in the **same region** as your infra (e.g. `us-east-1`)
+- Values for `db_password` and `ecs_task_execution_role_arn` (from your last apply)
+- ECR repo: if you already created `volleyball` in the console, set `create_ecr_repository = false` (Step 1.4)
 
 ---
 
-# Part 1: Build and Push (Local Machine)
+# Step 1: Apply CodeBuild + ECR Terraform
 
-## Step 1.1: Get AWS Account ID and Region
-
-```bash
-aws sts get-caller-identity --query Account --output text
-aws configure get region || echo "us-east-1"
-```
-
-Use your actual account ID and region (e.g. `088125374736`, `us-east-1`).
-
-## Step 1.2: Authenticate Docker to ECR
+## 1.1 Open CloudShell and clone repo
 
 ```bash
-aws ecr get-login-password --region us-east-1 | \
-  docker login --username AWS --password-stdin YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
+cd ~
+git clone https://github.com/tylermuir42/volleyball.git
+cd volleyball/infra/terraform
 ```
 
-Replace `YOUR_ACCOUNT_ID` and `us-east-1` if different.
-
-## Step 1.3: Build the Image
-
-From the **repo root**:
-
-```bash
-cd volleyball
-docker build -t volleyball-backend:latest -f backend/Dockerfile .
-```
-
-## Step 1.4: Tag for ECR
-
-```bash
-docker tag volleyball-backend:latest YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/volleyball-backend:latest
-```
-
-## Step 1.5: Push to ECR
-
-```bash
-docker push YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/volleyball-backend:latest
-```
-
-**Full image URI** (save this for Part 2):
-
-```
-YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/volleyball-backend:latest
-```
-
----
-
-# Part 2: Update ECS via Terraform (CloudShell)
-
-## Step 2.1: Open CloudShell and Go to Terraform
+If you already have the repo:
 
 ```bash
 cd ~/volleyball
@@ -84,89 +41,136 @@ git pull origin main
 cd infra/terraform
 ```
 
-If you don't have the repo:
-
-```bash
-git clone https://github.com/tylermuir42/volleyball.git
-cd volleyball/infra/terraform
-```
-
-## Step 2.2: Initialize Terraform (if needed)
+## 1.2 Initialize Terraform
 
 ```bash
 terraform init
 ```
 
-## Step 2.3: Apply with New Container Image
+## 1.3 Apply CodeBuild and ECR (targeted)
 
-Use the **full ECR URI** from Part 1. You must pass all required variables.
+This creates the CodeBuild project and ECR repo (if it doesn’t exist). Use targeted apply so you don’t need `container_image` yet.
 
-### Option A: Command line
+**If ECR repo `volleyball` does NOT exist yet:**
 
 ```bash
 terraform apply \
-  -var="container_image=YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/volleyball-backend:latest" \
+  -target=aws_ecr_repository.backend \
+  -target=aws_iam_role.codebuild \
+  -target=aws_iam_role_policy.codebuild \
+  -target=aws_codebuild_project.backend_build \
+  -var="container_image=placeholder" \
   -var="db_password=YOUR_DB_PASSWORD" \
   -var="ecs_task_execution_role_arn=arn:aws:iam::YOUR_ACCOUNT_ID:role/LabRole"
 ```
 
-### Option B: If you have `terraform.tfvars`
-
-Edit `terraform.tfvars` and set:
-
-```hcl
-container_image = "YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/volleyball-backend:latest"
-```
-
-Then:
+**If ECR repo `volleyball` already exists** (created in console):
 
 ```bash
-terraform apply
+terraform apply \
+  -target=aws_iam_role.codebuild \
+  -target=aws_iam_role_policy.codebuild \
+  -target=aws_codebuild_project.backend_build \
+  -var="create_ecr_repository=false" \
+  -var="container_image=placeholder" \
+  -var="db_password=YOUR_DB_PASSWORD" \
+  -var="ecs_task_execution_role_arn=arn:aws:iam::YOUR_ACCOUNT_ID:role/LabRole"
 ```
 
-### Option C: Environment variables (no secrets in history)
+Replace `YOUR_DB_PASSWORD` and `YOUR_ACCOUNT_ID`. Type `yes` when prompted.
+
+## 1.4 Get the ECR image URI
 
 ```bash
-export TF_VAR_container_image="YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/volleyball-backend:latest"
-export TF_VAR_db_password="YOUR_DB_PASSWORD"
-export TF_VAR_ecs_task_execution_role_arn="arn:aws:iam::YOUR_ACCOUNT_ID:role/LabRole"
-terraform apply
+terraform output ecr_image_uri
 ```
 
-Type `yes` when prompted.
+Save this value for Step 3.
 
-## Step 2.4: Targeted Apply (if full apply fails on ECS role)
+---
 
-If you get `Role is not valid` and only need to update the image:
+# Step 2: Build and push image via CodeBuild
+
+## 2.1 Start the build
+
+```bash
+aws codebuild start-build --project-name volleyball-backend-build
+```
+
+Note the `id` from the output (e.g. `volleyball-backend-build:abc12345-...`).
+
+## 2.2 Wait for the build to finish
+
+```bash
+# Replace BUILD_ID with the id from step 2.1
+aws codebuild batch-get-builds --ids BUILD_ID --query 'builds[0].buildStatus' --output text
+```
+
+Repeat until it returns `SUCCEEDED` (or `FAILED`). Or use:
+
+```bash
+# Poll until done (runs every 30 seconds)
+BUILD_ID=$(aws codebuild start-build --project-name volleyball-backend-build --query id --output text)
+while true; do
+  STATUS=$(aws codebuild batch-get-builds --ids $BUILD_ID --query 'builds[0].buildStatus' --output text)
+  echo "Status: $STATUS"
+  [ "$STATUS" = "SUCCEEDED" ] && break
+  [ "$STATUS" = "FAILED" ] && echo "Build failed!" && exit 1
+  sleep 30
+done
+echo "Build succeeded!"
+```
+
+## 2.3 If the build fails
+
+- AWS Console → **CodeBuild** → **Build projects** → `volleyball-backend-build` → **Build history** → open the failed build → **Phase details** for logs.
+- Or: CloudWatch → Log groups → `/codebuild/volleyball-backend-build`.
+
+---
+
+# Step 3: Update ECS with the new image
+
+## 3.1 Apply Terraform with the ECR image
+
+```bash
+terraform apply \
+  -var="container_image=$(terraform output -raw ecr_image_uri)" \
+  -var="db_password=YOUR_DB_PASSWORD" \
+  -var="ecs_task_execution_role_arn=arn:aws:iam::YOUR_ACCOUNT_ID:role/LabRole"
+```
+
+Replace `YOUR_DB_PASSWORD` and `YOUR_ACCOUNT_ID`. Type `yes` when prompted.
+
+**If you get `Role is not valid`**, use targeted apply:
 
 ```bash
 terraform apply \
   -target=aws_ecs_task_definition.backend \
   -target=aws_ecs_service.backend \
-  -var="container_image=YOUR_ECR_URI" \
+  -var="container_image=$(terraform output -raw ecr_image_uri)" \
   -var="db_password=YOUR_DB_PASSWORD" \
   -var="ecs_task_execution_role_arn=arn:aws:iam::YOUR_ACCOUNT_ID:role/LabRole"
 ```
 
 ---
 
-# Part 3: Verify
+# Step 4: Verify
 
-## Step 3.1: Get ALB URL
+## 4.1 Get ALB URL
 
 ```bash
 terraform output alb_dns_name
 ```
 
-## Step 3.2: Hit Health Endpoint
+## 4.2 Test health endpoint
 
 ```bash
-curl http://YOUR_ALB_DNS_NAME/health
+curl http://$(terraform output -raw alb_dns_name)/health
 ```
 
 Expected: `{"status":"ok"}` or similar.
 
-## Step 3.3: Check CloudWatch Logs
+## 4.3 Check CloudWatch logs
 
 1. AWS Console → **CloudWatch** → **Log groups**
 2. Open `/ecs/volleyball-backend`
@@ -175,22 +179,35 @@ Expected: `{"status":"ok"}` or similar.
 
 ---
 
+## Quick reference
+
+| Command | Purpose |
+|---------|---------|
+| `terraform output ecr_image_uri` | ECR image URI for `container_image` |
+| `terraform output codebuild_project_name` | CodeBuild project name |
+| `terraform output alb_dns_name` | ALB URL for health check |
+
+---
+
 ## Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
-| `no basic auth credentials` on push | Re-run `aws ecr get-login-password` and `docker login` |
-| `RepositoryNotFoundException` | Create ECR repo: `aws ecr create-repository --repository-name volleyball-backend` |
-| `Role is not valid` on apply | Use targeted apply (Step 2.4) or get valid ECS task execution role from lab admin |
-| `/health` returns 502/503 | Wait 2–3 min for ECS to pull image and start; check target group health in EC2 console |
-| Database connection errors in logs | Ensure RDS security group allows ECS; migrations run against RDS `postgres` database |
+| `RepositoryAlreadyExistsException` | Set `-var="create_ecr_repository=false"` and omit `-target=aws_ecr_repository.backend` |
+| `Role is not valid` on ECS apply | Use targeted apply (Step 3.1) for ECS only |
+| CodeBuild fails with IAM error | Lab may restrict IAM; ask admin for a CodeBuild role |
+| CodeBuild fails at `git clone` | Check repo URL and that it’s public |
+| `/health` returns 502/503 | Wait 2–3 min for ECS to pull image; check target group health |
+| Database errors in logs | Run migrations against RDS; check security groups |
 
 ---
 
-## Region Note
+## Region
 
-If your infra is in a different region (e.g. `us-west-2`), use that region in:
+If your infra is in another region (e.g. `us-west-2`):
 
-- ECR login
-- ECR URI
-- `terraform apply` (provider uses `var.aws_region`)
+```bash
+terraform apply -var="aws_region=us-west-2" ...
+```
+
+Or set it in `terraform.tfvars`.
