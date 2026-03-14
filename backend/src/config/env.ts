@@ -19,6 +19,15 @@ export const config = {
     URL: process.env.DATABASE_URL, // Alternative: full connection string
     POOL_SIZE: parseInt(process.env.DB_POOL_SIZE || "10", 10),
     IDLE_TIMEOUT: parseInt(process.env.DB_POOL_IDLE_TIMEOUT || "30000", 10),
+    CONNECTION_TIMEOUT: parseInt(
+      process.env.DB_POOL_CONNECTION_TIMEOUT || "5000",
+      10,
+    ),
+    SSL: {
+      ENABLED: process.env.DB_SSL === "true",
+      REJECT_UNAUTHORIZED:
+        process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false",
+    },
   },
 
   // AWS
@@ -79,6 +88,7 @@ export function logConfig(): void {
   console.log(`  PORT: ${config.DATABASE.PORT}`);
   console.log(`  NAME: ${config.DATABASE.NAME}`);
   console.log(`  POOL_SIZE: ${config.DATABASE.POOL_SIZE}`);
+  console.log(`  SSL: ${config.DATABASE.SSL.ENABLED}`);
   console.log(`\n🔌 AWS:`);
   console.log(`  REGION: ${config.AWS.REGION}`);
   console.log(`  EventBridge enabled: ${config.EVENTBRIDGE.ENABLED}`);

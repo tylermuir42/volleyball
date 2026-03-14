@@ -209,6 +209,14 @@ resource "aws_security_group" "ecs_service" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "ALB to ECS backend container"
+    from_port   = 4000
+    to_port     = 4000
+    protocol    = "tcp"
+    self        = true
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -241,7 +249,7 @@ resource "aws_lb_target_group" "backend" {
   target_type = "ip"
 
   health_check {
-    path                = "/health"
+    path                = "/health/live"
     matcher             = "200"
     interval            = 30
     timeout             = 5
@@ -290,7 +298,15 @@ resource "aws_ecs_task_definition" "backend" {
         },
         {
           name  = "DATABASE_URL",
-          value = "postgresql://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.address}:5432/postgres"
+          value = "postgresql://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.address}:5432/postgres?sslmode=require"
+        },
+        {
+          name  = "DB_SSL",
+          value = "true"
+        },
+        {
+          name  = "DB_SSL_REJECT_UNAUTHORIZED",
+          value = "false"
         },
         {
           name  = "AWS_REGION",

@@ -16,11 +16,17 @@ export function initializeDb(): Pool {
     return pool;
   }
 
+  const sslConfig = config.DATABASE.SSL.ENABLED
+    ? { rejectUnauthorized: config.DATABASE.SSL.REJECT_UNAUTHORIZED }
+    : undefined;
+
   const poolConfig = config.DATABASE.URL
     ? {
         connectionString: config.DATABASE.URL,
         max: config.DATABASE.POOL_SIZE,
         idleTimeoutMillis: config.DATABASE.IDLE_TIMEOUT,
+        connectionTimeoutMillis: config.DATABASE.CONNECTION_TIMEOUT,
+        ssl: sslConfig,
       }
     : {
         host: config.DATABASE.HOST,
@@ -30,6 +36,8 @@ export function initializeDb(): Pool {
         database: config.DATABASE.NAME,
         max: config.DATABASE.POOL_SIZE,
         idleTimeoutMillis: config.DATABASE.IDLE_TIMEOUT,
+        connectionTimeoutMillis: config.DATABASE.CONNECTION_TIMEOUT,
+        ssl: sslConfig,
       };
 
   pool = new Pool(poolConfig);

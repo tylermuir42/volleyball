@@ -8,6 +8,8 @@ exports.handler = async (event) => {
   const wsEndpoint = process.env.WS_API_ENDPOINT;
 
   const detail = event.detail || {};
+  const detailType = event["detail-type"] || detail.type || "UnknownEvent";
+  const source = event.source || "volleyball.backend";
   const tournamentId = detail.tournamentId || "all";
 
   const pk = `tournament#${tournamentId}`;
@@ -22,7 +24,13 @@ exports.handler = async (event) => {
 
   const apiGw = new ApiGatewayManagementApiClient({ endpoint: wsEndpoint });
 
-  const payload = JSON.stringify(detail);
+  const payload = JSON.stringify({
+    type: detailType,
+    detailType,
+    source,
+    tournamentId,
+    detail,
+  });
 
   const tasks = (query.Items || []).map(async (item) => {
     const connectionId = item.connectionId.S;
