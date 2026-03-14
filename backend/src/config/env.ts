@@ -25,8 +25,7 @@ export const config = {
     ),
     SSL: {
       ENABLED: process.env.DB_SSL === "true",
-      REJECT_UNAUTHORIZED:
-        process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false",
+      REJECT_UNAUTHORIZED: process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false",
     },
   },
 
@@ -39,7 +38,10 @@ export const config = {
 
   // EventBridge (ECS Terraform passes EVENT_BUS_NAME)
   EVENTBRIDGE: {
-    BUS_NAME: process.env.EVENT_BUS_NAME || process.env.EVENTBRIDGE_BUS_NAME || "volleyball-events",
+    BUS_NAME:
+      process.env.EVENT_BUS_NAME ||
+      process.env.EVENTBRIDGE_BUS_NAME ||
+      "volleyball-events",
     ENABLED: process.env.EVENTBRIDGE_ENABLED !== "false", // Enabled by default
   },
 

@@ -407,12 +407,7 @@ output "event_bus_arn" {
 }
 
 output "ecr_image_uri" {
-  description = "Full ECR image URI for backend (use as container_image after CodeBuild push)"
-  value       = local.ecr_uri
-}
-
-output "codebuild_project_name" {
-  description = "CodeBuild project name for starting backend build"
-  value       = aws_codebuild_project.backend_build.name
+  description = "Backend container image URI currently configured for ECS task definition"
+  value       = var.container_image
 }
 
