@@ -57,8 +57,15 @@ variable "ecs_task_execution_role_arn" {
   type        = string
 }
 
+variable "acm_certificate_arn" {
+  description = "Optional ACM certificate ARN for HTTPS listener on ALB (must be in same region as ALB). Leave empty to keep HTTP-only."
+  type        = string
+  default     = ""
+}
+
 locals {
   name_prefix = "${var.project_name}"
+  enable_https = trimspace(var.acm_certificate_arn) != ""
 }
 
 # EventBridge bus for domain events (MatchCompleted, StandingsUpdated, PoolCompleted, BracketGenerated)
@@ -262,10 +269,42 @@ resource "aws_lb_target_group" "backend" {
   }
 }
 
-resource "aws_lb_listener" "http" {
+resource "aws_lb_listener" "http_forward" {
+  count             = local.enable_https ? 0 : 1
   load_balancer_arn = aws_lb.public.arn
   port              = 80
   protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+}
+
+resource "aws_lb_listener" "http_redirect" {
+  count             = local.enable_https ? 1 : 0
+  load_balancer_arn = aws_lb.public.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  count             = local.enable_https ? 1 : 0
+  load_balancer_arn = aws_lb.public.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = var.acm_certificate_arn
 
   default_action {
     type             = "forward"
@@ -349,8 +388,51 @@ resource "aws_ecs_service" "backend" {
   }
 
   depends_on = [
-    aws_lb_listener.http
+    aws_lb_listener.http_forward,
+    aws_lb_listener.http_redirect,
+    aws_lb_listener.https
   ]
+}
+
+resource "aws_apigatewayv2_api" "backend_http" {
+  name          = "${local.name_prefix}-backend-http-api"
+  protocol_type = "HTTP"
+
+  cors_configuration {
+    allow_origins = ["*"]
+    allow_methods = ["*"]
+    allow_headers = ["*"]
+  }
+}
+
+resource "aws_apigatewayv2_integration" "backend_http_proxy" {
+  api_id                 = aws_apigatewayv2_api.backend_http.id
+  integration_type       = "HTTP_PROXY"
+  integration_method     = "ANY"
+  integration_uri        = "http://${aws_lb.public.dns_name}"
+  payload_format_version = "1.0"
+
+  request_parameters = {
+    "overwrite:path" = "$request.path"
+  }
+}
+
+resource "aws_apigatewayv2_route" "backend_http_root" {
+  api_id    = aws_apigatewayv2_api.backend_http.id
+  route_key = "ANY /"
+  target    = "integrations/${aws_apigatewayv2_integration.backend_http_proxy.id}"
+}
+
+resource "aws_apigatewayv2_route" "backend_http_proxy" {
+  api_id    = aws_apigatewayv2_api.backend_http.id
+  route_key = "ANY /{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.backend_http_proxy.id}"
+}
+
+resource "aws_apigatewayv2_stage" "backend_http_default" {
+  api_id      = aws_apigatewayv2_api.backend_http.id
+  name        = "$default"
+  auto_deploy = true
 }
 
 resource "aws_cloudwatch_log_group" "backend" {
@@ -389,6 +471,16 @@ resource "aws_cloudwatch_metric_alarm" "backend_error_alarm" {
 output "alb_dns_name" {
   description = "Public DNS name of the load balancer"
   value       = aws_lb.public.dns_name
+}
+
+output "api_base_url" {
+  description = "Base URL for frontend API calls"
+  value       = local.enable_https ? "https://${aws_lb.public.dns_name}" : "http://${aws_lb.public.dns_name}"
+}
+
+output "api_gateway_base_url" {
+  description = "HTTPS API Gateway URL for frontend calls (recommended for Amplify)"
+  value       = aws_apigatewayv2_stage.backend_http_default.invoke_url
 }
 
 output "db_endpoint" {
