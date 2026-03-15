@@ -62,7 +62,21 @@ aws ecs describe-task-definition \
   --query 'taskDefinition' > "$TMP_DIR/taskdef.json"
 
 jq --arg IMAGE "$IMAGE_URI" --arg NAME "$CONTAINER_NAME" '
-  .containerDefinitions |= map(if .name == $NAME then .image = $IMAGE else . end)
+  def upsert_env(envs; key; value):
+    if (envs // [] | any(.name == key))
+    then (envs // [] | map(if .name == key then .value = value else . end))
+    else ((envs // []) + [{ name: key, value: value }])
+    end;
+
+  .containerDefinitions |= map(
+    if .name == $NAME then
+      .image = $IMAGE
+      | .environment = upsert_env(.environment; "DB_SSL"; "true")
+      | .environment = upsert_env(.environment; "DB_SSL_REJECT_UNAUTHORIZED"; "false")
+    else
+      .
+    end
+  )
   | del(
       .taskDefinitionArn,
       .revision,
