@@ -7,6 +7,7 @@ Use this when GitHub OIDC is unavailable in Learner Lab.
 - `scripts/deploy-backend-cloudshell.sh`
 
 This script will:
+
 1. Build backend Docker image from `backend/Dockerfile`.
 2. Push image to ECR.
 3. Register a new ECS task definition revision with the new image.

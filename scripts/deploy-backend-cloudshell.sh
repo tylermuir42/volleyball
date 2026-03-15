@@ -35,7 +35,7 @@ aws ecr get-login-password --region "$AWS_REGION" | \
   docker login --username AWS --password-stdin "$REGISTRY"
 
 echo "Building backend image..."
-docker build -f "$REPO_ROOT/backend/Dockerfile" -t "$IMAGE_URI" "$REPO_ROOT"
+docker build -f "$REPO_ROOT/backend/Dockerfile" -t "$IMAGE_URI" "$REPO_ROOT/backend"
 
 echo "Pushing image to ECR..."
 docker push "$IMAGE_URI"
