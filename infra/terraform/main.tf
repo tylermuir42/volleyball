@@ -269,42 +269,10 @@ resource "aws_lb_target_group" "backend" {
   }
 }
 
-resource "aws_lb_listener" "http_forward" {
-  count             = local.enable_https ? 0 : 1
+resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.public.arn
   port              = 80
   protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
-  }
-}
-
-resource "aws_lb_listener" "http_redirect" {
-  count             = local.enable_https ? 1 : 0
-  load_balancer_arn = aws_lb.public.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type = "redirect"
-
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
-    }
-  }
-}
-
-resource "aws_lb_listener" "https" {
-  count             = local.enable_https ? 1 : 0
-  load_balancer_arn = aws_lb.public.arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = var.acm_certificate_arn
 
   default_action {
     type             = "forward"
@@ -388,9 +356,7 @@ resource "aws_ecs_service" "backend" {
   }
 
   depends_on = [
-    aws_lb_listener.http_forward,
-    aws_lb_listener.http_redirect,
-    aws_lb_listener.https
+    aws_lb_listener.http
   ]
 }
 
