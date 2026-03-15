@@ -298,7 +298,7 @@ resource "aws_ecs_task_definition" "backend" {
         },
         {
           name  = "DATABASE_URL",
-          value = "postgresql://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.address}:5432/postgres?sslmode=require"
+          value = "postgresql://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.address}:5432/postgres"
         },
         {
           name  = "DB_SSL",

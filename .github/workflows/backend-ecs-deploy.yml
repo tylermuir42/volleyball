@@ -1,0 +1,108 @@
+name: Backend Deploy to ECS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - backend/**
+      - .github/workflows/backend-ecs-deploy.yml
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: volleyball-cluster
+  ECS_SERVICE: volleyball-backend
+  ECR_REPOSITORY: volleyball
+  CONTAINER_NAME: backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Compute image URI
+        id: image
+        shell: bash
+        run: |
+          SHORT_SHA="${GITHUB_SHA::12}"
+          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${SHORT_SHA}"
+          echo "image_uri=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push backend image
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.image_uri }}
+        run: |
+          docker build -f backend/Dockerfile -t "$IMAGE_URI" backend
+          docker push "$IMAGE_URI"
+
+      - name: Register new task definition revision
+        id: taskdef
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.image_uri }}
+        shell: bash
+        run: |
+          CURRENT_TASK_DEF_ARN=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          aws ecs describe-task-definition \
+            --task-definition "$CURRENT_TASK_DEF_ARN" \
+            --query 'taskDefinition' > taskdef.json
+
+          jq --arg IMAGE "$IMAGE_URI" --arg NAME "$CONTAINER_NAME" '
+            .containerDefinitions |= map(if .name == $NAME then .image = $IMAGE else . end)
+            | del(
+                .taskDefinitionArn,
+                .revision,
+                .status,
+                .requiresAttributes,
+                .compatibilities,
+                .registeredAt,
+                .registeredBy
+              )
+          ' taskdef.json > taskdef-new.json
+
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://taskdef-new.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "task_definition_arn=${NEW_TASK_DEF_ARN}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to ECS service
+        env:
+          TASK_DEFINITION_ARN: ${{ steps.taskdef.outputs.task_definition_arn }}
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --task-definition "$TASK_DEFINITION_ARN" \
+            --force-new-deployment
+
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE"
+
+      - name: Show deployed image
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.image_uri }}
+        run: echo "Deployed image $IMAGE_URI"
